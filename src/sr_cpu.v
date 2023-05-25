@@ -17,7 +17,9 @@ module sr_cpu
     input   [ 4:0]  regAddr,    // debug access reg address
     output  [31:0]  regData,    // debug access reg data
     output  [31:0]  imAddr,     // instruction memory address
-    input   [31:0]  imData      // instruction memory data
+
+    input   [31:0]  imData,     // instruction memory data
+    input   [31:0]  imData2
 );
     //control wires
     wire        aluZero;
@@ -26,6 +28,8 @@ module sr_cpu
     wire        aluSrc;
     wire        wdSrc;
     wire  [2:0] aluControl;
+
+    wire        pcDelay;
 
     //instruction decode wires
     wire [ 6:0] cmdOp;
@@ -41,13 +45,20 @@ module sr_cpu
     //program counter
     wire [31:0] pc;
     wire [31:0] pcBranch = pc + immB;
-    wire [31:0] pcPlus4  = pc + 4; // ПОМЕНЯТЬ ЗДЕСЬ
-    wire [31:0] pcNext   = pcSrc ? pcBranch : pcPlus4; //мультиплексор
+
+    //wire [31:0] pcPlus4  = pc + 4;
+    //wire [31:0] pcPlus4 = pcDelay ? pc + 0 : pc + 8;
+    wire [31:0] pcPlus4 = pc + 8;
+    
+    wire [31:0] pcNext  = pcSrc ? pcBranch : ( pcDelay ? pcPlus4 : pc ); //мультиплексор
     sm_register r_pc(clk ,rst_n, pcNext, pc);
 
     //program memory access
-    assign imAddr = pc >> 2;
-    wire [31:0] instr = imData;
+    assign imAddr = pc >> 2; 
+
+    //wire [31:0] instr = imData;
+   wire [31:0] instr = pcDelay ? imData2 : imData;
+    
 
     //instruction decode
     sr_decode id (
@@ -109,7 +120,9 @@ module sr_cpu
         .regWrite   ( regWrite     ),
         .aluSrc     ( aluSrc       ),
         .wdSrc      ( wdSrc        ),
-        .aluControl ( aluControl   ) 
+        .aluControl ( aluControl   ),
+        .pcDelay    ( pcDelay      ),
+        .clk        ( clk          )
     );
 
 endmodule
@@ -168,11 +181,18 @@ module sr_control
     output reg       regWrite, 
     output reg       aluSrc,
     output reg       wdSrc,
-    output reg [2:0] aluControl
+    output reg [2:0] aluControl,
+    output reg       pcDelay,
+    input            clk
 );
+    
     reg          branch;
     reg          condZero;
+    
     assign pcSrc = branch & (aluZero == condZero);
+
+    always @ (posedge clk) 
+        pcDelay = ~pcDelay;
 
     always @ (*) begin
         branch      = 1'b0;
@@ -196,6 +216,11 @@ module sr_control
             { `RVF7_ANY,  `RVF3_BNE,  `RVOP_BNE  } : begin branch = 1'b1; aluControl = `ALU_SUB; end
         endcase
     end
+    
+    initial begin
+        pcDelay = 0; // Инициализация значениями
+    end
+
 endmodule
 
 module sr_alu
