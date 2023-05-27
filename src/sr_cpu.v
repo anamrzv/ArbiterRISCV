@@ -46,8 +46,7 @@ module sr_cpu
     wire [31:0] pc;
     wire [31:0] pcBranch = pc + immB;
 
-    //wire [31:0] pcPlus4  = pc + 4;
-    //wire [31:0] pcPlus4 = pcDelay ? pc + 0 : pc + 8;
+    
     wire [31:0] pcPlus4 = pc + 8;
     
     wire [31:0] pcNext  = pcSrc ? pcBranch : ( pcDelay ? pcPlus4 : pc ); //мультиплексор
@@ -56,10 +55,8 @@ module sr_cpu
     //program memory access
     assign imAddr = pc >> 2; 
 
-    //wire [31:0] instr = imData;
    wire [31:0] instr = pcDelay ? imData2 : imData;
     
-
     //instruction decode
     sr_decode id (
         .instr      ( instr        ),
@@ -192,7 +189,7 @@ module sr_control
     assign pcSrc = branch & (aluZero == condZero);
 
     always @ (posedge clk) 
-        pcDelay = ~pcDelay;
+        pcDelay = pcSrc ? 1 : ~pcDelay;
 
     always @ (*) begin
         branch      = 1'b0;
@@ -212,7 +209,7 @@ module sr_control
             { `RVF7_ANY,  `RVF3_ADDI, `RVOP_ADDI } : begin regWrite = 1'b1; aluSrc = 1'b1; aluControl = `ALU_ADD; end
             { `RVF7_ANY,  `RVF3_ANY,  `RVOP_LUI  } : begin regWrite = 1'b1; wdSrc  = 1'b1; end
 
-            { `RVF7_ANY,  `RVF3_BEQ,  `RVOP_BEQ  } : begin branch = 1'b1; condZero = 1'b1; aluControl = `ALU_SUB; end
+            { `RVF7_ANY,  `RVF3_BEQ,  `RVOP_BEQ  } : begin branch = 1'b1; condZero = 1'b1; aluControl = `ALU_SUB; end //если сейчас команда перехода, то задержки нет
             { `RVF7_ANY,  `RVF3_BNE,  `RVOP_BNE  } : begin branch = 1'b1; aluControl = `ALU_SUB; end
         endcase
     end
