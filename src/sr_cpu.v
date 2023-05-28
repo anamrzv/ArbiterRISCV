@@ -19,7 +19,9 @@ module sr_cpu
     output  [31:0]  imAddr,     // instruction memory address
 
     input   [31:0]  imData,     // instruction memory data
-    input   [31:0]  imData2
+    input   [31:0]  imData2,
+    input   [31:0]  firstAddr,  
+    input   [31:0]  secondAddr
 );
     //control wires
     wire        aluZero;
@@ -44,29 +46,28 @@ module sr_cpu
 
     //program counter
     wire [1:0] current_command;
-    wire [31:0] pc;
-    wire [31:0] pcBranch = current_command == 2 ? pc + 8 + immB : pc + immB;
-
+    
+    wire [31:0] currentAddr;
+    wire [31:0] pc;    
+    wire [31:0] pcBranch = current_command == 2 ? currentAddr + immB : pc + immB;
     wire [31:0] pcPlus4 = pc + 8;
-    
-    
     wire [31:0] pcNext  = (pcSrc && current_command != 0) ? pcBranch : ( current_command == 2 ? pcPlus4 : pc ); //мультиплексор
     sm_register r_pc(clk ,rst_n, pcNext, pc);
-
     //program memory access
     assign imAddr = pc >> 2; 
 
-    wire [31:0] instr; // = pcDelay ? imData2 : imData; //ЗАМЕНЕНО НА АРБИТР
-
+    wire [31:0] instr;
     wire imDataReady = 1;
     wire imDataReady2 = 1;
-    
 
     arbiter arb (
         .clk        ( clk          ),
         .reset      ( rst_n        ),
         .command_1  ( imData       ),
         .command_2  ( imData2      ),
+        .firstAddr ( firstAddr),
+        .secondAddr ( secondAddr),
+        .currentAddr (currentAddr),
         .command_valid_1 ( imDataReady ),
         .command_valid_2 ( imDataReady2 ),
         .data_out ( instr ),
@@ -119,10 +120,11 @@ module sr_cpu
         .srcB       ( srcB         ),
         .oper       ( aluControl   ),
         .zero       ( aluZero      ),
-        .result     ( aluResult    ) 
+        .result     ( aluResult    ),
+        .current_command (current_command)
     );
 
-    assign wd3 = wdSrc ? immU : aluResult; // мультиплексор на выходе АЛУ
+    assign wd3 = wdSrc ? immU : current_command !=0 ? aluResult : wd3; // мультиплексор на выходе АЛУ
 
     //control
     sr_control sm_control (
@@ -236,9 +238,11 @@ module sr_alu
     input  [31:0] srcB,
     input  [ 2:0] oper,
     output        zero,
-    output reg [31:0] result
+    output reg [31:0] result,
+    input [1:0] current_command
 );
     always @ (*) begin
+    if (current_command != 0) begin
         case (oper) //влияет то, какой из результатов будет подан на выход
             default   : result = srcA + srcB;
             `ALU_ADD  : result = srcA + srcB;
@@ -247,6 +251,7 @@ module sr_alu
             `ALU_SLTU : result = (srcA < srcB) ? 1 : 0;
             `ALU_SUB : result = srcA - srcB;
         endcase
+     end
     end
 
     assign zero   = (result == 0);

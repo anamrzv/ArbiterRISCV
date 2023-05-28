@@ -8,7 +8,11 @@ module arbiter(
     output reg [31:0] data_out, // выбранная арбитром команда
     output reg [1:0]  data_out_ready,
     
-    input isBranch
+    input isBranch,
+    input [31:0] firstAddr,
+    input [31:0] secondAddr,
+    
+    output reg [31:0] currentAddr
     // output reg ready
 );
 
@@ -21,8 +25,6 @@ module arbiter(
     
     //логика текущего состояния
     always @(posedge clk, posedge reset)
-//        if (reset) current_state <= READY;
-//        else 
         current_state <= next_state;
     
     //логика следующего состояния
@@ -57,11 +59,13 @@ module arbiter(
                 if (data_out_ready == 1)
                     data_out_ready <= 0;
                 else data_out_ready <= 1;
+                currentAddr <= firstAddr;
                 end
             SECOND_TRAN: begin
                 data_out <= command_2;
                 if (data_out_ready == 2) data_out_ready <= 0;
                 else data_out_ready <= 2;
+                currentAddr <= secondAddr;
                 end
         endcase  
         

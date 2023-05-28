@@ -17,7 +17,10 @@ module sm_rom
 (
     input  [31:0] a, 
     output [31:0] rd1,
-    output [31:0] rd2
+    output [31:0] rd2,
+    
+    output reg [31:0] firstAddr,
+    output reg [31:0] secondAddr
 );
     reg [31:0] rom [SIZE - 1:0];
     
@@ -26,6 +29,8 @@ module sm_rom
     reg [31:0] a_next; 
     always @* begin
         a_next = ((a << 2) + 4) >> 2; // Смещение на 4 байта для получения адреса следующей команды
+        secondAddr =  a_next << 2;
+        firstAddr = a << 2;
     end
  
     assign rd2 = rom [a_next]; 
