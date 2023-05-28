@@ -43,19 +43,36 @@ module sr_cpu
     wire [31:0] immU;
 
     //program counter
+    wire [1:0] current_command;
     wire [31:0] pc;
-    wire [31:0] pcBranch = pc + immB;
+    wire [31:0] pcBranch = current_command == 2 ? pc + 8 + immB : pc + immB;
 
-    
     wire [31:0] pcPlus4 = pc + 8;
     
-    wire [31:0] pcNext  = pcSrc ? pcBranch : ( pcDelay ? pcPlus4 : pc ); //мультиплексор
+    
+    wire [31:0] pcNext  = (pcSrc && current_command != 0) ? pcBranch : ( current_command == 2 ? pcPlus4 : pc ); //мультиплексор
     sm_register r_pc(clk ,rst_n, pcNext, pc);
 
     //program memory access
     assign imAddr = pc >> 2; 
 
-   wire [31:0] instr = pcDelay ? imData2 : imData;
+    wire [31:0] instr; // = pcDelay ? imData2 : imData; //ЗАМЕНЕНО НА АРБИТР
+
+    wire imDataReady = 1;
+    wire imDataReady2 = 1;
+    
+
+    arbiter arb (
+        .clk        ( clk          ),
+        .reset      ( rst_n        ),
+        .command_1  ( imData       ),
+        .command_2  ( imData2      ),
+        .command_valid_1 ( imDataReady ),
+        .command_valid_2 ( imDataReady2 ),
+        .data_out ( instr ),
+        .data_out_ready ( current_command ),
+        .isBranch ( pcSrc )
+    );
     
     //instruction decode
     sr_decode id (
@@ -188,9 +205,6 @@ module sr_control
     
     assign pcSrc = branch & (aluZero == condZero);
 
-    always @ (posedge clk) 
-        pcDelay = pcSrc ? 1 : ~pcDelay;
-
     always @ (*) begin
         branch      = 1'b0;
         condZero    = 1'b0;
@@ -212,10 +226,6 @@ module sr_control
             { `RVF7_ANY,  `RVF3_BEQ,  `RVOP_BEQ  } : begin branch = 1'b1; condZero = 1'b1; aluControl = `ALU_SUB; end //если сейчас команда перехода, то задержки нет
             { `RVF7_ANY,  `RVF3_BNE,  `RVOP_BNE  } : begin branch = 1'b1; aluControl = `ALU_SUB; end
         endcase
-    end
-    
-    initial begin
-        pcDelay = 0; // Инициализация значениями
     end
 
 endmodule
