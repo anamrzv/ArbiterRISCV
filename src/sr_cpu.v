@@ -15,13 +15,14 @@ module sr_cpu
     input           clk,        // clock
     input           rst_n,      // reset
     input   [ 4:0]  regAddr,    // debug access reg address
-    output  [31:0]  regData,    // debug access reg data
-    output  [31:0]  imAddr,     // instruction memory address
 
     input   [31:0]  imData,     // instruction memory data
     input   [31:0]  imData2,
     input   [31:0]  firstAddr,  
-    input   [31:0]  secondAddr
+    input   [31:0]  secondAddr,
+
+    output  [31:0]  regData,    // debug access reg data
+    output  [31:0]  imAddr,     // instruction memory address
 );
     //control wires
     wire        aluZero;
@@ -46,13 +47,14 @@ module sr_cpu
 
     //program counter
     wire [1:0] current_command;
-    
     wire [31:0] currentAddr;
+
     wire [31:0] pc;    
     wire [31:0] pcBranch = current_command == 2 ? currentAddr + immB : pc + immB;
     wire [31:0] pcPlus4 = pc + 8;
-    wire [31:0] pcNext  = (pcSrc && current_command != 0) ? pcBranch : ( current_command == 2 ? pcPlus4 : pc ); //мультиплексор
+    wire [31:0] pcNext  = (pcSrc && current_command != 0) ? pcBranch : ( current_command == 2 ? pcPlus4 : pc );
     sm_register r_pc(clk ,rst_n, pcNext, pc);
+
     //program memory access
     assign imAddr = pc >> 2; 
 
@@ -65,7 +67,7 @@ module sr_cpu
         .reset      ( rst_n        ),
         .command_1  ( imData       ),
         .command_2  ( imData2      ),
-        .firstAddr ( firstAddr),
+        .firstAddr  ( firstAddr),
         .secondAddr ( secondAddr),
         .currentAddr (currentAddr),
         .command_valid_1 ( imDataReady ),
@@ -198,8 +200,7 @@ module sr_control
     output reg       aluSrc,
     output reg       wdSrc,
     output reg [2:0] aluControl,
-    output reg       pcDelay,
-    input            clk
+    output reg       pcDelay
 );
     
     reg          branch;
@@ -238,11 +239,9 @@ module sr_alu
     input  [31:0] srcB,
     input  [ 2:0] oper,
     output        zero,
-    output reg [31:0] result,
-    input [1:0] current_command
+    output reg [31:0] result
 );
     always @ (*) begin
-    if (current_command != 0) begin
         case (oper) //влияет то, какой из результатов будет подан на выход
             default   : result = srcA + srcB;
             `ALU_ADD  : result = srcA + srcB;
@@ -251,7 +250,6 @@ module sr_alu
             `ALU_SLTU : result = (srcA < srcB) ? 1 : 0;
             `ALU_SUB : result = srcA - srcB;
         endcase
-     end
     end
 
     assign zero   = (result == 0);

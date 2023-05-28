@@ -43,8 +43,8 @@ module sm_top
     wire    [31:0]  imAddr;
     wire    [31:0]  imData;
     wire    [31:0]  imData2;
-    wire    [31:0] secondAddr;
-    wire    [31:0] firstAddr;
+    wire    [31:0]  secondAddr;
+    wire    [31:0]  firstAddr;
     sm_rom reset_rom(imAddr, imData, imData2, firstAddr, secondAddr);
 
     sr_cpu sm_cpu

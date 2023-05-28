@@ -1,19 +1,15 @@
 module arbiter(
     input clk,
     input reset,
-    
     input [31:0] command_1, command_2,
     input command_valid_1, command_valid_2,
-    
-    output reg [31:0] data_out, // выбранная арбитром команда
-    output reg [1:0]  data_out_ready,
-    
     input isBranch,
     input [31:0] firstAddr,
     input [31:0] secondAddr,
     
+    output reg [31:0] data_out, // выбранная арбитром команда
+    output reg [1:0]  data_out_ready,
     output reg [31:0] currentAddr
-    // output reg ready
 );
 
     parameter READY = 0;
@@ -69,6 +65,4 @@ module arbiter(
                 end
         endcase  
         
-  
-
 endmodule
